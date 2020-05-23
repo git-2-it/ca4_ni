@@ -166,3 +166,12 @@ docs_in <- subset(docs_in, !duplicated(docs_in$PracNo))
 
 write.csv(file="data/cleaned_practice_data.csv", x=docs_in, quote=TRUE, row.names = FALSE)
 
+# Group the practices
+# Grouping based on county bundaries
+# Previous caveats still apply
+docs_in$C_Group <- "g2"
+docs_in$C_Group[docs_in$County == "ANTRIM"] <- "g1"
+docs_in$C_Group[docs_in$County == "LONDONDERRY"] <- "g1"
+docs_in$C_Group[docs_in$County == "DOWN"] <- "g1"
+
+write.csv(file="data/cleaned_practice_data.csv", x=docs_in, quote=TRUE, row.names = FALSE)
