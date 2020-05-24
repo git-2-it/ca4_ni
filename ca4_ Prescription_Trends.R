@@ -810,45 +810,43 @@ man_predict %>%
 # No Benefit
 
 #------------------------------------------
-# EOF
+# EO First model, check the auto again
 #------------------------------------------
 
 auto_model <- auto.arima(ts_monthly)
 auto_model
 
-man_trained_arima_items <-arima(items_train, 
+auto_arima_items <-arima(items_train, 
                                 c(5, 1, 0),
                                 seasonal = list(order = c(1, 0, 0),
                                                 period = 12)
 )
-man_trained_arima_items
+auto_arima_items
+arima_items
 
-man_predict <- forecast(man_trained_arima_items, 18)
-man_predict
+auto_predict <- forecast(auto_arima_items, 18)
+auto_predict
 
 
 
-actuals_man_predictions <- data.frame(cbind(actuals = items_test, predicted = man_predict))
-head(actuals_man_predictions)
+actuals_auto_predictions <- data.frame(cbind(actuals = items_test, predicted = auto_predict))
+head(actuals_auto_predictions)
 
-actuals_man_predictions
+actuals_auto_predictions
 
-correlation_accuracy_man <- cor(actuals_man_predictions)
-correlation_accuracy_man
+correlation_accuracy_auto <- cor(actuals_auto_predictions)
+correlation_accuracy_auto
 
-library(psych)
-
-par(opar)
-
-pairs.panels(actuals_man_predictions, 
+pairs.panels(actuals_auto_predictions, 
              method = "pearson", # correlation method
              hist.col = "#00AFBB",
              density = TRUE,  # show density plots
              ellipses = TRUE # show correlation ellipses
-             , main = "Correlation check of actual and predicted item ratios"
+             , main = "Correlation check of actual and predicted item ratios (AUTO)"
 )
 
 accuracy(man_predict, items_test)
+accuracy(auto_predict)
 
 man_predict %>%
     autoplot() +
@@ -861,4 +859,7 @@ man_predict %>%
     )
 
 
+#------------------------------------------
+# EOF
+#------------------------------------------
 
