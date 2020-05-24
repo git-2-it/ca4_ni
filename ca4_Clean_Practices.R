@@ -1,6 +1,6 @@
 # ca4_ni
 
-# Several datasets required apart from the prescription data itslef
+# Several datasets required apart from the prescription data itself
 # Practice data
 # Post code data (for the practices geo-location)
 

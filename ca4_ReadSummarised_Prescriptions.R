@@ -1,8 +1,8 @@
 # ca4_ni
 # Reads previously aggregated summary data for practices
-# a series of files, one per month, for teh practice total items/
+# a series of files, one per month, for the practice total items/
 
-# Previously, practices were teh core dataset
+# Previously, practices were the core dataset
 # Core dataset moves to time based data
 
 # Init required libraries

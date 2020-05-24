@@ -45,7 +45,9 @@ cycle(ts_monthly)
 
 plot(ts_monthly, 
      main = "Raw time series plot",
-     ylab = "Avg item patient ratio")
+     ylab = "Avg item patient ratio",
+     xlab = "Years"
+     )
 
 # grab defaults
 opar <- par(no.readonly = FALSE)
@@ -70,8 +72,6 @@ abline( reg = lm(ts_monthly ~ time(ts_monthly) ) )
 # This would indicates an increasing number of items are prescribed each year
 # even if patient numbers/popoulation remained stable
 
-opar <- par(no.readonly = TRUE)
-
 par( mfrow = c(2,2))
 
 ylimit <- c(min(ts_monthly), max(ts_monthly))
@@ -85,8 +85,28 @@ plot(aggregate(ts_monthly, FUN = mean))
 
 par(opar)
 
-# Get the YoY trend
-# whats adding to the data year on year
+# The various MA plots confirm the trend
+
+# Multiplicative or additive?
+# Looks additive, that is there is a year trend, and a season trend, 
+# and the season trend is not changing over time
+
+# Check, by comparing compare plot and log plot
+
+log_ts <- log(ts_monthly)
+
+plot(ts_monthly,
+     xlab = "Years",
+     ylab = "Item ratio")
+par(new = TRUE)
+plot(log_ts, type = "l", axes = FALSE, bty = "n", xlab = "", ylab = "", col = "red",
+     main = "Data plot with log of data overlay",
+)
+
+par(opar)
+
+# nsdiffs(ts_monthly) # Value of zero matches the observation
+# Data still looks additive - the base plot and the log plot look the same.
 
 
 # seasonality - do things change in the monthly periods
@@ -105,25 +125,7 @@ chk
 # Note the outliers, leave in place and continue.
 
 # Looks like there is a seasonal component, ie the data changes from month to month
-
-# Multiplicative or additive?
-# Looks additive, that is there is a year trend, and a season trend, 
-# and the season trend is not changing over time
-
-# Check, by comparing compare plot and log plot?
-
-
-log_ts <- log(ts_monthly)
-
-plot(ts_monthly)
-par(new = TRUE)
-plot(log_ts, type = "l", axes = FALSE, bty = "n", xlab = "", ylab = "", col = "red",
-     main = "Data plot with log of data overlay")
-
-par(opar)
-
-# nsdiffs(ts_monthly) # Value of zero matches the observation
-# Data still looks additive - the base plot and the log plot look the same.
+# boxplot doesn't really help show it clearly
 
 
 ######################
@@ -134,7 +136,10 @@ ts_decompose <- stl(ts_monthly, s.window="periodic")
 
 deseason_ct <- seasadj(ts_decompose)
 
-plot (ts_decompose)
+plot (ts_decompose,
+      main = "Item ratio decomposition over time",
+      )
+
 
 # stationarity check
 # Test the stationarity of the object
@@ -167,6 +172,7 @@ Pacf(ts_monthly,
      main = "Item/Patient ratio\nPartial auto-corellation"
 )
 
+
 # Need to de-trend and de-seasonalise the data
 
 # De-trend the data
@@ -175,17 +181,16 @@ Pacf(ts_monthly,
 nsdiffs(ts_monthly)
 # 0
 
-nsdiffs(ts_monthly)
+ndiffs(ts_monthly)
+# 1
+
+diff_ts_monthly <- diff(ts_monthly, lag = 12 , differences = 1)
+plot(diff_ts_monthly)
 
 diff_ts_monthly <- diff(ts_monthly, lag = 12 , differences = 1)
 
-adf.test(diff_ts_monthly, alternative = "stationary")
-# low p-value = 0.04819 - Stationary
-
-
-acf(ts_monthly)
-Pacf(ts_monthly)
-
+adf.test(diff_ts_monthly, alternative = "stationary", k = 12)
+# low p-value  - Stationary
 
 # Which ARIMA model to use?
 # Collect the decision points
@@ -203,7 +208,7 @@ Pacf(ts_monthly)
 ndiffs(ts_monthly)
 # 1 - D
 
-# Seasonal - (P, D, Q)[frequency]
+# Seasonal component - (P, D, Q)[frequency]
 # frequency = 12
 acf(diff_ts_monthly) 
 # significant at 0 - P
@@ -216,10 +221,10 @@ ndiffs(diff_ts_monthly)
 # total model = (0, 1, 2)(0, 0, 1)[12]
 
 arima_items <-arima(ts_monthly, 
-            c(0, 1, 2),
-            seasonal = list(order = c(1, 0, 0),
-                            period = 12)
-)
+                    c(0, 1, 2),
+                    seasonal = list(order = c(1, 0, 0),
+                                    period = 12)
+                    )
 arima_items
 
 # generate some forecasts
@@ -229,11 +234,13 @@ prediction <- predict(arima_items, n.ahead = 3 * 12 ) # 3 years at 12 months
 prediction
 
 forecast_model <- forecast(arima_items, 
-                           level = c(95), # 36 momnths (though could be 3 * 16), 
-                           h = 18) # h is confidence interval
+                           level = c(95), # confidence level
+                           h = 18) # h is frequency
 forecast_model
 
-plot(forecast_model)
+plot(forecast_model,
+     ylab = "Item ratio",
+     xlab = "Years")
 
 
 #------------------------------------------
@@ -246,6 +253,7 @@ auto_model
 
 # Different model proposed - ARIMA(5,1,0)(1,0,0)[12]
 
+
 # Which is better?
 
 qqnorm(arima_items$residuals)
@@ -257,6 +265,11 @@ qqline(auto_model$residuals)
 
 # Look similar ...
 
+accuracy(arima_items)
+accuracy(auto_model)
+
+# Box test
+
 Box.test(arima_items$residuals, type = "Ljung-Box")
 Box.test(auto_model$residuals, type = "Ljung-Box")
 
@@ -267,13 +280,14 @@ Box.test(auto_model$residuals, type = "Ljung-Box")
 # yee-haa
 
 
+
 #------------------------------------------
 # Model testing
 #------------------------------------------
 
 # split the data in train and test
 # 83 obvs
-# Set last 18 months as the test dataset
+# Set last 18 months as the test dataset, not quite 80/20 but a decent period
 
 items_train <- stats::window(x = ts_monthly, end = c(2018, 8) )
 items_train
@@ -281,7 +295,9 @@ str(items_train)
 
 items_test <- stats::window(x = ts_monthly, start = c(2018, 9) )
 items_test
+str(items_test)
 
+# Items based on manual model
 man_trained_arima_items <-arima(items_train, 
                     c(0, 1, 2),
                     seasonal = list(order = c(1, 0, 0),
@@ -289,56 +305,99 @@ man_trained_arima_items <-arima(items_train,
 )
 man_trained_arima_items
 
-
-auto_arima_model <- auto.arima(items_train)
-auto_arima_model
-
-predict_auto_ARIMA <- forecast(auto_arima_model, 18)
-predict_auto_ARIMA
-
 man_predict <- forecast(man_trained_arima_items, 18)
 man_predict
 
 
 
-actuals_predictions <- data.frame(cbind(actuals = items_test, predicted = predict_auto_ARIMA))
-head(actuals_predictions)
+actuals_man_predictions <- data.frame(cbind(actuals = items_test, predicted = man_predict))
+head(actuals_man_predictions)
 
-correlation_accuracy <- cor(actuals_predictions)
-correlation_accuracy
+actuals_man_predictions
 
-
-actuals_predictions_man <- data.frame(cbind(actuals = items_test, predicted = precict_manual_ARIMA))
-head(actuals_predictions_man)
-str(actuals_predictions_man)
-
-correlation_accuracy_man <- cor(actuals_predictions_man)
+correlation_accuracy_man <- cor(actuals_man_predictions)
 correlation_accuracy_man
 
-
-actuals_predictions_man <- data.frame(cbind(actuals = items_test, predicted = precict_manual_ARIMA))
-
-predict_auto_ARIMA$g <- "Auto"
-precict_manual_ARIMA$g <- "Man"
-items_test$g <- "Actual"
-
-
-# plot all three
-
-items_test <- stats::window(x = ts_monthly, start = c(2018, 9) )
-man2 <- stats::window(x = man_predict, start = c(2018, 9) )
-
-
-par(opar)
-plot(items_test)
-plot(man_predict)
-
-par(new = TRUE)
-plot(man_predict, type = "l", axes = FALSE, bty = "n", xlab = "", ylab = "", col = "red",
-     main = "Data plot with log of data overlay")
+library(psych)
 
 par(opar)
 
+pairs.panels(actuals_man_predictions, 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             , main = "Correlation check of actual and predicted item ratios"
+)
+
+accuracy(man_predict, items_test)
+
+man_predict %>%
+    autoplot() +
+    geom_line(
+        aes(
+            x = as.numeric(time(items_test)),
+            y = as.numeric(items_test)
+        ),
+        col = "red"
+    )
+
+
+
+# more training data, smaller prediction?
+items_train12 <- stats::window(x = ts_monthly, end = c(2019, 2) )
+items_train12
+str(items_train12)
+
+items_test12 <- stats::window(x = ts_monthly, start = c(2019, 3) )
+items_test12
+str(items_test12)
+
+# Items based on manual model
+man_trained_arima_items12 <-arima(items_train12, 
+                                c(0, 1, 2),
+                                seasonal = list(order = c(1, 0, 0),
+                                                period = 12)
+)
+man_trained_arima_items12
+
+man_predict12 <- forecast(man_trained_arima_items12, 12)
+man_predict12
+
+
+
+actuals_man_predictions12 <- data.frame(cbind(actuals = items_test12, predicted = man_predict12))
+head(actuals_man_predictions12)
+str(actuals_man_predictions12)
+
+actuals_man_predictions12
+
+correlation_accuracy_man12 <- cor(actuals_man_predictions12)
+correlation_accuracy_man12
+
+accuracy(man_predict, items_test)
+
+pairs.panels(actuals_man_predictions12, 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             , main = "Correlation check of actual and predicted item ratios"
+)
+
+accuracy(man_predict12, items_test12)
+
+man_predict %>%
+    autoplot() +
+    geom_line(
+        aes(
+            x = as.numeric(time(items_test12)),
+            y = as.numeric(items_test12)
+        ),
+        col = "red"
+    )
+
+# No Benefit
 
 #------------------------------------------
 # EOF
