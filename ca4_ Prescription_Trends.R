@@ -813,4 +813,52 @@ man_predict %>%
 # EOF
 #------------------------------------------
 
->>>>>>> 3fed7c66f22b4a2650450d8706f68776b9ee23ae
+auto_model <- auto.arima(ts_monthly)
+auto_model
+
+man_trained_arima_items <-arima(items_train, 
+                                c(5, 1, 0),
+                                seasonal = list(order = c(1, 0, 0),
+                                                period = 12)
+)
+man_trained_arima_items
+
+man_predict <- forecast(man_trained_arima_items, 18)
+man_predict
+
+
+
+actuals_man_predictions <- data.frame(cbind(actuals = items_test, predicted = man_predict))
+head(actuals_man_predictions)
+
+actuals_man_predictions
+
+correlation_accuracy_man <- cor(actuals_man_predictions)
+correlation_accuracy_man
+
+library(psych)
+
+par(opar)
+
+pairs.panels(actuals_man_predictions, 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             , main = "Correlation check of actual and predicted item ratios"
+)
+
+accuracy(man_predict, items_test)
+
+man_predict %>%
+    autoplot() +
+    geom_line(
+        aes(
+            x = as.numeric(time(items_test)),
+            y = as.numeric(items_test)
+        ),
+        col = "red"
+    )
+
+
+
