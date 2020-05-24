@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # ca4_ni
 # Prescription trends
 
